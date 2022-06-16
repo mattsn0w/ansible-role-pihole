@@ -1,0 +1,68 @@
+---
+- name: systemd-resolved - Stop Service
+  ansible.builtin.systemd:
+    name: systemd-resolved.service
+    state: stopped
+
+- name: systemd-resolved - Disable Service
+  ansible.builtin.systemd:
+    name: systemd-resolved.service
+    enabled: no
+
+- name: /etc/systemd/resolved.conf - configure Domain and set value
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/resolved.conf
+    regex: '#Domains='
+    line: 'Domains=.co.slakin.net'
+
+- name: /etc/systemd/resolved.conf - configure DNSStubListener and set value
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/resolved.conf
+    regex: '#DNSStubListener=yes'
+    line: 'DNSStubListener=no'
+
+- name: /etc/resolv.conf - Remove symlink
+  ansible.builtin.file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: /etc/resolv.conf - Create file and add {{ dns_ip_one }}
+  ansible.builtin.lineinfile:
+    path: /etc/resolv.conf
+    line: "nameserver {{ dns_ip_one }}"
+    create: yes
+
+- name: /etc/resolv.conf - Add {{ dns_ip_two }}
+  ansible.builtin.lineinfile:
+    path: /etc/resolv.conf
+    line: "nameserver {{ dns_ip_two }}"
+
+- name: /etc/resolv.conf - Add search domain {{ dns_search_domain_one }}
+  ansible.builtin.lineinfile:
+    path: /etc/resolv.conf
+    line: "search {{ dns_search_domain_one }}"
+
+- name: systemd - perform daemon_reload
+  ansible.builtin.systemd:
+    daemon_reload: yes
+
+- name: Docker - Create docker directory
+  ansible.builtin.file:
+    path: /home/msnow/docker/pihole-parents/
+    state: directory 
+    owner: msnow
+    mode: 0755
+
+- name: Docker - Copy compose yaml to remote server
+  ansible.builtin.template:
+    src: templates/docker-compose.yaml.j2
+    dest: /home/msnow/docker/pihole-parents/docker-compose.yaml
+    owner: msnow
+
+- name: Docker - compose up -d to start service
+  ansible.builtin.command: /usr/local/bin/docker-compose -f /home/msnow/docker/pihole-parents/docker-compose.yaml up -d
+
+- name: PiHole - Copy custom host list for pihole
+  ansible.builtin.template:
+    src: templates/custom.list.j2
+    dest: /home/msnow/docker/pihole-parents/etc-pihole/custom.list

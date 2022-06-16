@@ -1,0 +1,46 @@
+version: "3"
+# More info at https://github.com/pi-hole/docker-pi-hole/ and https://docs.pi-hole.net/
+services:
+  pihole:
+    container_name: {{ pihole_containername_hostname }}
+    hostname: {{ pihole_containername_hostname }}
+    image: pihole/pihole:latest
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+        #- "67:67/udp"
+      - "80:80/tcp"
+      - "443:443/tcp"
+    environment:
+      TZ: 'America/Denver'
+      WEBPASSWORD: '{{ pihole_web_password }}'
+      DNSSEC: 'true'
+      DNS_FQDN_REQUIRED: 'true'
+      TEMPERATUREUNIT: 'f'
+      DNS_BOGUS_PRIV: 'true'
+      PIHOLE_DNS_: '1.1.1.1;1.1.1.2'
+    # Volumes store your data between container upgrades
+    volumes:
+       - '/home/msnow/docker/pihole-parents/etc-pihole/:/etc/pihole/'
+       #- 'etcpihole:/etc/pihole/'
+       - '/home/msnow/docker/pihole-parents/etc-dnsmasq.d/:/etc/dnsmasq.d/'
+       #- 'etcdnsmasqd:/etc/dnsmasq.d/'
+    # Recommended but not required (DHCP needs NET_ADMIN)
+    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
+    cap_add:
+      - NET_ADMIN
+    restart: always
+volumes:
+  etcpihole:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: 'addr=172.16.1.50,nolock,soft,rw'
+      device: ':/tanker/k8s/pihole-parents/etc-pihole'
+  etcdnsmasqd:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: 'addr=172.16.1.50,nolock,soft,rw'
+      device: ':/tanker/k8s/pihole-parents/etc-dnsmasq.d'
+
